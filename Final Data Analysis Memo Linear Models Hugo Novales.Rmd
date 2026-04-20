@@ -1,0 +1,297 @@
+---
+title: "Data Analysis Memo"
+author: "Hugo Novales"
+date: "2026-04-18"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+library(tidyverse)
+library(kableExtra)
+library(plm)
+library(lmtest)
+library(sandwich)
+library(sjPlot)
+library(sensemakr)
+library(readxl)
+library(vdemdata)
+
+```
+
+1. Research Question 
+
+What explains variation in majority formation in multiparty legislatures? Consensus in political science about district magnitude and party fragmentation. However, does this rationale extend to majority formation? This questio is important because it has to do with the actual performance of legislatures. It is also important because majority formation is how political and policy change occurs in democracies. If majorities are not formed in lagislatures, then democracy may stagnate and (consequences). (Furthermore, is democracy really a democracy if voters cannot drive change? )
+
+District magnitude is relatively stable. Comparing accross cases is difficult because specific countries may have different drives of majority formation or gridlock. 
+
+The causal logic is important. Electoral systems do not in and of themselves produce more parties, but, where multiple parties exist, they may repress the number of parties of fail to do so. District magnitude here is a key variable. Several authors (Cox) have found that smaller district magnitudes tend to exert pressure on the number of parties, while larger magnitudes relax this pressur and allow for more proliferation. 
+
+The number of parties and their relative sizes (fragmentation, effective number of parties) may be associated to majority formation. However, it does not say anything about whether those parties have substantial reasons to agree on policy. Polarization, therefore, could also influence majority formation. While I'm not interested in the effect of polarization, it is important to consider it in a causal model. 
+
+I'm interested in one specific case. (Reaosns for interest in Guatemala?). There are benefits to focusing on a single case. The first that this allows us to control for noise associated to national context variation. In other words, there may be a reason why politicians in country X tend to form majorities less frequently than politicinas in neighboring country Y. It could be ethnic cleavages, political culture, legislative procedural rules. Focusing on a single country allows me to isolate my variables of interest, at least to a larger measure than if I were employing a cross-country analysis. 
+
+While we know that restrictive electoral systems -such as those with smaller district magnitude- tend to repress or supress the number of parties, it is rare that a country reduces its district magnitude. Legislators are typically in charge of electoral reform, and they reasonably understand that reducing district magnitude may act against their probability of reelection. Therefore, overlwhelmingly, district magnitude tends to increase rather than decrease. This presents a problem for identification, as the effects of electoral system reform may linger into the future. Societal fragmentation or political polarization -or any other idyosincratic variable that affects majority formation- may increase or decrease organically without changes in the electoral system. 
+
+[maybe a graph or table here that illustrates electoral system change]
+
+A better test for the effects of electoral system change on majority formation is when changes in opposite directions occur close in time. An example of this is [argentina case we read in moraski's clss]. Guatemala is one such case. Since the first democratic electio in the curent regime regime in 1986, over the course of ten elections and an equal number of legislatures, district magnitude has changed 5 time, increasing 4 times and decreasing once. This whithin-case variation allows me to approximate a causal effect much more than in an country where magnitude has only increased. Futhermore, restricting the analysis to a single case with such a short democratic spell sets a high bar for causality: since the number of observations is very small, each single observation should be understood to have enough leverage so that changes in the dependent variable attributable to factors other than my explanation should significally weaken my theory. 
+
+2. Causal Model and Hypotheses
+
+My theory is as follows. District magnitude is the single most important variable that influences majority formation. First, it will increase the number of parties -presumably with different views- present in a legislature. Second, in increasing the number of parties and creating a more proportional seat allocation, it will make the legislature a more faithful reflection of polarization in society, making majority formation more difficult the more polarized society is. That is, the effect of district magnitude is sensitive to polarization: when polarization increases, the effect should be stronger. Finally, I expect majority formation to be sensitive to political events. One specific type of political event is elections. In the year following an election, when the legislature is newly integrated, they may be motivated to deliver on campaign promises and party cohesion is expected to be strongest. As the next election year approaches, legislators will be more occupied with campaigning, therefore affecting legislative output. This means that my causal model should control for distance to the prior or next election. 
+
+
+Hypothesis 1 
+
+Higher district magnitude is associated with lower frequency of majority formation. 
+
+Hypothesis 2
+
+The effect of district magnitude is partially mediated by party fragmentation. 
+
+Hypothesis 3
+
+District magnitude interacts with societal polarization to decrease the frequency of majority formation. 
+
+Hypothesis 4 
+
+Majority formation will be less frequent as the next election approaches. 
+
+
+I have modeled these hypothesis as follows: 
+
+Majority formation =  district magnitude + party fragmentation + polarization + distance to next election + (polarization * district magnitude)
+
+3. Data 
+
+The effect of district magnitude on majority formation would be best tested in a controlled environment by setting up 
+n polities and assigning them different district magnitudes, observing them over a constant period of time and counting the frequency with which voting majorities form in the legislature. This is not possible. Instead, I have chosen a single polity -Guatemala-, which has some variation in district magnitude over time. This is the main independent variable. One way to measure the dependent variable -majority formation- would be to analyze voting records to identify the frequency with which each legislature achieves a majority. I don't have access to voting records, but I was able to scrape the website of the Guatemalan legislature for every piece of legislation approved since 1928. Beggining in 19XX, each piece of legislation is official coded with a decree number ("número de decreto") which includes a index number ranging from 1 to the number of laws passed in a year, followed by a hyphen and the year in which the legislation was passed. This allows me to count the number of pieces of legislation approved in each year. I am then using legislative ouput as a proxi for majority formation. 
+
+Guateamla experienced regime change several times over the course of the 20th century. However, after the democratic election in 1985, the regime has been reasonably stable, holding legislative elections which are reasonably free and fair every five years until 1995, and every four years thereafter. This allows me to use seat allocation data from each of those elections to build a party fragmentation measure. I have obtained this data from the V-Party Dataset by the V-Dem project (CITE). I have also obtained data on political polarization from the V-Dem database. 
+
+```{r, data cleaning, organizing, wrangling, include=FALSE}
+
+#I downloaded the source code from https://www.congreso.gob.gt/seccion_informacion_legislativa/decretos and stored it as a text file in source_code_decretos_congreso
+
+decretos<-paste(readLines("source_code_decretos_congreso"), collapse = "\n")
+# capture "de 1994", "del 2023", etc.
+pattern <- "\\bde[l]?\\s+(19|20)\\d{2}\\b"
+
+phrases <- str_extract_all(decretos, pattern)[[1]]
+
+# extract the year out of each phrase
+years <- str_extract(phrases, "(19|20)\\d{2}")
+
+decrees_per_year <- data.frame(year = years) %>%
+  count(year, name = "n") %>%
+  arrange(as.numeric(year))
+
+decrees_per_year_democracy<-decrees_per_year%>%filter(year>=1986)
+decrees_per_year_democracy$ELECTION<-c(1985, 1985, 1985, 1985, 1985, 
+                                       1990, 1990, 1990, 1990, 1990, 
+                                       1995, 1995, 1995, 1995, 
+                                       1999, 1999, 1999, 1999, 
+                                       2003, 2003, 2003, 2003, 
+                                       2007, 2007, 2007, 2007, 
+                                       2011, 2011, 2011, 2011, 
+                                       2015, 2015, 2015, 2015, 
+                                       2019, 2019, 2019, 2019, 
+                                       2023, 2023)
+
+decrees_per_year_democracy<-as.tibble(decrees_per_year_democracy)
+decrees_per_year_democracy$ELECTION<-as.double(decrees_per_year_democracy$ELECTION)
+decrees_per_year_democracy
+decrees_per_year
+
+district_magnitude <- data.frame(
+  District = c(
+    "El Progreso","Baja Verapaz","Zacapa","Sacatepequez","Santa Rosa","Sololá",
+    "Retalhuleu","Izabal","Chiquimula","Jalapa","Totonicapán","Petén","Jutiapa",
+    "Chimaltenango","Suchitepequez","Escuintla","Quetzaltenango","Quiché",
+    "San Marcos","Alta Verapaz","Huehuetenango","Central","Guatemala",
+    "National List"
+  ),
+  `1985` = c(2,2,2,2,2,2,2,2,2,2,2,2,3,2,2,4,5,4,6,4,5,10,6,25),
+  `1990` = c(2,2,2,2,3,2,2,3,3,2,3,2,4,3,3,5,5,5,6,5,6,10,7,29),
+  `1995` = c(1,1,1,1,2,1,1,2,2,1,2,1,3,2,2,4,4,4,5,4,5,9,6,16),
+  `1999` = c(1,1,1,2,3,2,2,3,2,2,3,2,3,3,3,4,6,5,8,6,7,10,12,22),
+  `2003` = c(1,2,2,3,3,3,3,3,3,3,4,4,4,5,5,6,7,8,9,9,10,11,19,31),
+  `2007` = c(1,2,2,3,3,3,3,3,3,3,4,4,4,5,5,6,7,8,9,9,10,11,19,31),
+  `2011` = c(1,2,2,3,3,3,3,3,3,3,4,4,4,5,5,6,7,8,9,9,10,11,19,31),
+  `2015` = c(1,2,2,3,3,3,3,3,3,3,4,4,4,5,5,6,7,8,9,9,10,11,19,31),
+  `2019` = c(2,2,2,3,3,3,3,3,3,3,4,4,4,5,5,6,7,8,9,9,10,11,19,32),
+  `2023` = c(2,2,2,3,3,3,3,3,3,3,4,4,4,5,5,6,7,8,9,9,10,11,19,32),
+  check.names = FALSE
+  )
+
+district_magnitude
+
+avg_magnitude<- district_magnitude %>%
+  pivot_longer(-District, names_to = "ELECTION", values_to = "MAGNITUDE") %>%
+  mutate(ELECTION = as.double(ELECTION)) %>%
+  group_by(ELECTION) %>%
+  summarize(avg_magnitude = mean(MAGNITUDE))
+
+avg_magnitude
+
+
+seats_per_party_per_election <- read_excel("seats_per_party_per_election.xlsx")
+seats_per_party_per_election
+
+seats_per_party_per_election<-
+ENP <- seats_per_party_per_election %>%
+  group_by(ELECTION) %>%
+  summarize(
+    ENP = 1 / sum(SEAT_SHARE^2)
+  )
+
+ENP
+
+vparty_guate_democracy<-vparty%>%
+  filter(country_name == "Guatemala")%>%
+  filter(year >= 1985)
+vparty_guate_democracy
+guate_democracy_seats<-vparty_guate_democracy%>%
+  select(v2paenname, v2pashname, year, v2panumbseat)
+  
+guate_democracy_seats
+
+
+summary(decrees_per_year)
+ggplot(data = decrees_per_year_democracy, aes(x = year, y = n)) + geom_col()
+decrees_per_magnitude<-left_join(decrees_per_year_democracy, avg_magnitude, by = "ELECTION")
+decrees_per_magnitude <- decrees_per_magnitude %>%
+  group_by(ELECTION) %>%
+  mutate(year_in_term = row_number()) %>%
+  ungroup()
+decrees_per_magnitude
+polarization_gt <- vdem %>%
+  filter(country_name == "Guatemala") %>%
+  select(year, v2cacamps_osp)%>%filter(year >= "1986")
+polarization_gt
+polarization_gt$year<-as.character(polarization_gt$year)
+decrees_per_magnitude<-left_join(decrees_per_magnitude, polarization_gt, by = "year")
+decrees_per_magnitude<-left_join(decrees_per_magnitude, ENP, by = "ELECTION")
+summary(decrees_per_magnitude)
+
+```
+
+```{r, descriptive exploration}
+
+as.tibble((decrees_per_year_democracy))
+
+as.tibble(avg_magnitude)
+
+
+ggplot(data = decrees_per_magnitude, aes(x = year, y = n)) + geom_col() + facet_wrap(~ELECTION, scales = "free_x")
+
+ggplot(avg_magnitude, aes(ELECTION, avg_magnitude))+ geom_col()
+
+ggplot(decrees_per_magnitude, aes(year, v2cacamps_osp, group = 1))+ geom_line()
+
+
+```
+
+
+
+
+
+
+4. Analysis
+
+
+``` {r, analysis}
+model1<-lm(n~avg_magnitude, decrees_per_magnitude)
+summary(model1)
+coeftest(model1)
+coeftest(model1, vcov = vcovCL, cluster = ~ELECTION)
+
+model2<-lm(n~avg_magnitude + year_in_term, decrees_per_magnitude)
+model2
+summary(model2)
+coeftest(model2)
+coeftest(model2, vcov = vcovCL, cluster = ~ELECTION)
+
+model3<-lm(n~avg_magnitude + year_in_term + v2cacamps_osp, decrees_per_magnitude)
+model3
+summary(model3)
+coeftest(model3)
+coeftest(model3, vcov = vcovCL, cluster = ~ELECTION) #it's not polarization. wohooo. 
+
+model4<-lm(n~avg_magnitude + year_in_term + v2cacamps_osp + ENP, decrees_per_magnitude)
+model4
+summary(model4)
+coeftest(model4)
+coeftest(model4, vcov = vcovCL, cluster = ~ELECTION)
+
+summary(lm(n~ENP, decrees_per_magnitude))
+
+plot_model(model4, type = "eff", terms = "avg_magnitude")
+ggplot(decrees_per_magnitude, mapping = aes(avg_magnitude, n)) + geom_smooth(method = lm)
+
+model5<-lm(n~avg_magnitude*v2cacamps_osp + year_in_term + ENP, decrees_per_magnitude)
+model5
+summary(model5)
+
+```
+
+5. Assumption Review and Robustness Checks
+
+``` {r, tests and assumptions}
+##### Abajo los plots para hacer los tests
+
+
+plot_model(model4, show.values = TRUE, width = 0.1) +
+  theme_minimal() +
+  labs(title = "Determinantes de la Producción Legislativa")
+
+par(mfrow = c(2, 2)) # Divide la pantalla en 4
+plot(model4)
+par(mfrow = c(1, 1)) # Regresa la pantalla a la normalidad
+
+print(raintest(model4)) # p-value 0.9336. Reject Linearity H0 (passed test)
+
+lmtest::dwtest(model4) #p-value 0.045. True autocorrelation is greater than 0, meaning dependencia temporal (does not pass IID sample test)
+
+car::vif(model4) #no hay multicolinearidad, o al menos no hay demasiada...? entre dm y enp puede haber, pero no es total. pasa
+
+bptest(model4) # p-value = 0.7683, H0, no hay heteroscedasticidad (hay homocedasticidad), pasa. 
+
+shapiro.test(residuals(model4)) #p-value 0.246, H0, pasa
+
+
+
+
+
+
+
+
+
+
+
+#abajo de aquí estoy guardando por cualquier cosa, pero creo que no sirve. 
+
+panel_decrees_per_magnitude<-pdata.frame(decrees_per_magnitude, index = c("ELECTION", "year"))
+panel_decrees_per_magnitude
+ # model3<-plm(n~avg_magnitude, decrees_per_magnitude,index = c("ELECTION", "year"), 
+#            model = "random", 
+ #           random.method = "nerlove") #This does not work, with any random.method. Explanation: no within-ELECTION variation. 
+
+# causal workflow
+# Question
+# Estimand
+# Ideal experiment 
+# Identification strategy
+# Estimation
+# Inference / uncertainty
+
+
+```
+
+
+6.Conclusion 
+
+7. Bibliogrpahy

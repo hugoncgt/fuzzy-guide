@@ -2,7 +2,9 @@
 title: "Data Analysis Memo"
 author: "Hugo Novales"
 date: "2026-04-18"
-output: pdf_document
+output:
+  pdf_document:
+    extra_dependencies: ["float"]
 editor_options: 
   markdown: 
     wrap: 72
@@ -10,6 +12,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.pos = "H")
 
 library(ggplot2)
 library(tidyverse)
@@ -28,6 +31,8 @@ library(sandwich)
 
 ```
 
+# 1. Research Question
+
 What explains variation in majority formation in multiparty legislatures? There is consensus in political science about the role of district magnitude and party fragmentation (Cox 1997; Lijphart 1999; Norris 2004). However, does this rationale extend to majority formation? This question is important because it speaks to the actual performance of legislatures. It is also important because majority formation is how political and policy change occurs in democracies. If majorities are not formed in legislatures, then democracy may stagnate and fail to perform in a manner that is satisfactory for citizens.
 District magnitude is relatively stable, as electoral rules are a matter of contention. Comparing across cases is difficult because specific countries may have different drivers of majority formation or gridlock.
 
@@ -41,7 +46,7 @@ While we know that restrictive electoral systems  -such as those with smaller di
 A better test for the effects of electoral system change on majority formation is when changes in opposite directions occur close in time.  Guatemala is one such case. Since the first democratic election in the current regime in 1986, over the course of ten elections and an equal number of legislatures, district magnitude has changed 5 times, increasing 4 times and decreasing once (Brolo 2012; Brolo 2013). This within-case variation allows me to approximate a causal effect much more than in a country where magnitude has only increased. Furthermore, restricting the analysis to a single case with such a short democratic spell sets a high bar for causality: since the number of observations is very small, each single observation should be understood to have enough leverage so that changes in the dependent variable attributable to factors other than my explanation should significantly weaken my theory.
 
 
-2.  Causal Model and Hypotheses
+# 2.  Causal Model and Hypotheses
 
 My theory is as follows. District magnitude is the single most important
 variable that influences majority formation. First, it will increase the
@@ -87,7 +92,7 @@ Majority formation = district magnitude + party fragmentation +
 polarization + distance to next election + (polarization \* district
 magnitude)
 
-3.  Data
+# 3.  Data
 
 The effect of district magnitude on majority formation would be best
 tested in a controlled environment by setting up n polities and
@@ -224,39 +229,51 @@ summary(decrees_per_magnitude)
 
 ```
 
-```{r, descriptive exploration, table 1, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE}
+```{r, descriptive exploration, table 1, echo = FALSE, message = FALSE, warning = FALSE}
 
 kable(district_magnitude, caption = "Districts and District Magnitude in Guatemala, 1985-2025")
 
 ```
 
-```{r, Table 2, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE}
+\newpage
+
+```{r, Table 2, echo = FALSE, message = FALSE, warning = FALSE}
 kable(avg_magnitude, caption = "Average District Magnitude by Election in Guatemala, 1985-2025")
 
 ```
 
-```{r, Table 3, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE}
+\newpage
+
+```{r, Table 3, echo = FALSE, message = FALSE, warning = FALSE}
 kable(decrees_per_year_democracy, caption = "Legislative Output (n) by Year in Guateamla, 1986-2025")
 
 ```
 
-```{r, figure 1, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE, fig.cap = "Average District Magnitude by Election"}
+\newpage
+
+```{r, figure 1, echo = FALSE, message = FALSE, warning = FALSE, fig.cap = "Average District Magnitude by Election"}
 ggplot(avg_magnitude, aes(ELECTION, avg_magnitude))+ geom_col() 
 
 ```
 
-```{r, figure 2, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE, fig.cap = "Effective Number of Parties by Election"}
+\newpage
+
+```{r, figure 2, echo = FALSE, message = FALSE, warning = FALSE, fig.cap = "Effective Number of Parties by Election"}
 
 ggplot(decrees_per_magnitude, aes(x = factor(ELECTION), y = ENP)) + geom_col(stat = "summary", fun = "mean")
 
 ```
 
-```{r figure 3, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE, fig.cap = "Polarization (v2cacamps_ops) by Year (V-Dem)"}
+\newpage
+
+```{r figure 3, echo = FALSE, message = FALSE, warning = FALSE, fig.cap = "Polarization (v2cacamps_ops) by Year (V-Dem)"}
 
 ggplot(decrees_per_magnitude, aes(year, v2cacamps_osp, group = 1))+ 
   geom_line() + 
   theme(axis.text.x = element_text(angle = 90))
 ```
+
+\newpage
 
 ```{r, figure 4, fig.cap = "Number of Decrees (n) by Year"}
 ggplot(data = decrees_per_magnitude, aes(x = year, y = n)) + 
@@ -265,29 +282,31 @@ ggplot(data = decrees_per_magnitude, aes(x = year, y = n)) +
 
 ```
 
-```{r, figure 5, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE, fig.cap = "Number of Decrees by Effective Number of Parties" }
+```{r, figure 5, echo = FALSE, message = FALSE, warning = FALSE, fig.cap = "Number of Decrees by Effective Number of Parties" }
 
 ggplot(data = decrees_per_magnitude, aes (x = ENP, y = n)) + geom_point()
 ```
 
-```{r, figure 6, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE, fig.cap = "Number of Decrees (n) by Average District Magnitude"}
+```{r, figure 6, echo = FALSE, message = FALSE, warning = FALSE, fig.cap = "Number of Decrees (n) by Average District Magnitude"}
 
 ggplot(data = decrees_per_magnitude, aes (x = avg_magnitude, y = n)) + geom_point()
 
 ```
 
-```{r, figure 7, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE, fig.cap = "Number of Decrees (n) by Year in Term"}
+```{r, figure 7, echo = FALSE, message = FALSE, warning = FALSE, fig.cap = "Number of Decrees (n) by Year in Term"}
 
 ggplot(data = decrees_per_magnitude, aes (x = year_in_term, y = n)) + geom_point()
 
 ```
 
 
-4.  Analysis
+\newpage
 
-I ran an OLS regression for my main independent variable -average district magnitude- and my main dependent variable -legislative output- (Model 1), and then I control for year in term and polarization in subsequent models (2 and 3. Based on my model  model described above, I included an interaction term where political polarizaton (v2cacamps_obs) interacts with district magnitude (Model 4).  I find that year in term explains a small part of legislative output across all models. In models 1-3, district magnitude is the main driver behind legislative output, accounting for more than 20% of its variation, in the predicted direction. However, in the last model, the interaction term moves all this explanatory weight to polarization, and significance dissappears. Model 2 offers the most parsimonious explanation and is therefore the one I chose to continue working with below. Thus, I find support for Hypothesis 1 and Hypothesis 4, but not for Hypothesis 3. 
+# 4.  Analysis
 
-```{r, analysis, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE}
+I ran an OLS regression for my main independent variable -average district magnitude- and my main dependent variable -legislative output- (Model 1), and then I control for year in term and polarization in subsequent models (2 and 3. Based on my model  model described above, I included an interaction term where political polarizaton (v2cacamps_obs) interacts with district magnitude (Model 4).  I find that year in term explains a small part of legislative output across all models. In models 1-3, district magnitude is the main driver behind legislative output in the anticipated direction. However, in the last model, the interaction term moves all this explanatory weight to polarization, and significance dissappears. Model 2 offers the most parsimonious explanation and is therefore the one I chose to continue working with below. Thus, I find support for Hypothesis 1 and Hypothesis 4, but not for Hypothesis 3. 
+
+```{r, analysis, echo = FALSE, message = FALSE, warning = FALSE, results = 'hide'}
 model1<-lm(n~avg_magnitude, decrees_per_magnitude)
 summary(model1)
 coeftest(model1)
@@ -310,7 +329,10 @@ coeftest(model4)
 coeftest(model4, vcov = vcovCL, cluster = ~ELECTION)
 #significantly deflates avg_magnitude and eliminates significance
 
-modelsummary(list ("Model 1" = model1, "Model 2" = model2, "Model 3" = model3, "Model 4" = model4), stars = TRUE, title = "Table 4: Results of OLS Regression for Specified Model")
+```
+
+```{r, echo=FALSE}
+modelsummary(list ("Model 1" = model1, "Model 2" = model2, "Model 3" = model3, "Model 4" = model4), stars = TRUE, title = "Results of OLS Regression for Specified Model")
 
 ```
 
@@ -347,9 +369,11 @@ modelsummary(modelX, stars = TRUE, title = "Effective Number of Parties Regresse
 
 ```
 
-5.  Assumption Review and Robustness Checks
+\newpage
 
-The following regression diagnostics plots allow me to review the necessary assumptions for my OLS identification strategy. The Residuals vs. Fitted plot shows a reasonably stable line and identifies certain outliers (22, 20, 14). The line is slightly curved (U-Shaped) suggesting non-linnearity. Similarly, in the  Q-Q Residuals plot, while all points lie along the diagonal, the same points as in the Residuals vs. Fitted test lie outside of the diagonal, suggesting that residuals are may not be normally distributed. The Scale-Location plot shows reasonable uniformity in the distribution of all points, suggesting homoscedasticity. Finally, in the Residuals vs. Leverage plot, while   the aforementioned outliers have more leverage than the rest of the points, they do not cross into the significance corners. 
+# 5.  Assumption Review and Robustness Checks
+
+The following regression diagnostics plots allow me to review the necessary assumptions for my OLS identification strategy. I am using Model 2. The Residuals vs. Fitted plot shows a reasonably stable line and identifies certain outliers (22, 20, 14). The line is slightly curved (U-Shaped) suggesting non-linnearity. Similarly, in the  Q-Q Residuals plot, while all points lie along the diagonal, the same points as in the Residuals vs. Fitted test lie outside of the diagonal, suggesting that residuals are may not be normally distributed. The Scale-Location plot shows reasonable uniformity in the distribution of all points, suggesting homoscedasticity. Finally, in the Residuals vs. Leverage plot, while   the aforementioned outliers have more leverage than the rest of the points, they do not cross into the significance corners. 
 
 
 ```{r, tests and assumptions, plot, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE}
@@ -361,9 +385,9 @@ plot(model2)
 #par(mfrow = c(1, 1)) # 
 
 ```
-Since the plots above suggest possible non-linearity and non-normality, I ran the following tests to check for each of the OLS assumptions. The results are described in Table 4. Overall, Model 2 passes all tests except for the Durbin-Watson test. Observations are not independent, mainly because one important driver of change is the integration of a new legislature with every election. Different legislatures will have different ideological configurations; in some legislatures, the president's party has a majority while in others it does not; also, different issues may come up at different times over 40 years and affect polarization, policy choices and the disposition to form majorities. 
+Since the plots above suggest possible non-linearity and non-normality, I ran statistical tests to check for each of the OLS assumptions. The results are described in Table 7. Overall, Model 2 passes all tests except for the Durbin-Watson test. Observations are not independent, mainly because one important driver of change is the integration of a new legislature with every election. Different legislatures will have different ideological configurations; in some legislatures, the president's party has a majority while in others it does not; also, different issues may come up at different times over 40 years and affect polarization, policy choices and the disposition to form majorities. 
 
-Table 4 shows the results for the same models that I specified above, adjusting standard errors to account for clustering around the variable "ELECTION", which defines each legislative session. Coefficients and significance levels remain similar. 
+Table 8 shows the results for the same models that I specified above, adjusting standard errors to account for clustering around the variable "ELECTION", which defines each legislative session. Coefficients and significance levels remain similar. 
 
 ```{r, assumption checks, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE, include = FALSE}
 
@@ -419,20 +443,25 @@ Normality
 | Normality | Shapiro-Wilk | W = 0.970 | 0.367 | Pass |
 | Multicollinearity | VIF | avg_magnitude = 1.016, year_in_term = 1.016 | — | Pass |
 
-```{r, coefficient tests, echo = FALSE, message = FALSE, results = 'hide', warning = FALSE, message = FALSE, results = 'hide', warning = FALSE}
+```{r, coefficient tests, echo = FALSE, message = FALSE, warning = FALSE, message = FALSE, results = 'hide', warning = FALSE}
 
 coeftest1<- coeftest(model1, vcov = vcovCL, cluster = ~ELECTION)
 coeftest2<- coeftest(model2, vcov = vcovCL, cluster = ~ELECTION)
 coeftest3<- coeftest(model3, vcov = vcovCL, cluster = ~ELECTION)
 coeftest4<- coeftest(model4, vcov = vcovCL, cluster = ~ELECTION)
 
+```
+
+```{r coeftest table}
+
 modelsummary(list ("Model 1" = coeftest1, "Model 2" = coeftest2, "Model 3" = coeftest3, "Model 4" = coeftest4), stars = TRUE, title = "Coefficient Tests for Specified Models on ELECTION Cluster")
 
 ```
 
 
+\newpage
 
-7.  Bibliogrpahy
+# 7.  Bibliogrpahy
 
 Brolo, Javier. 2012. Resultados electorales de los partidos políticos en Guatemala de 1985 a 2012. Guatemala City: ASIES.
 
@@ -448,6 +477,8 @@ Figueroa, Valentin. 2025. "Does Proportionality Increase Turnout? A Study of Ada
 Mainwaring, Scott. 1993. "Presidentialism, Multipartism, and Democracy: The Difficult Combination." Comparative Political Studies 26(2): 198–228.
 
 Negretto, Gabriel L., and Giancarlo Visconti. 2018. "Electoral Reform under Limited Party Competition: The Adoption of Proportional Representation in Latin America." Latin American Politics and Society 60(1): 27–51.
+
+Naslund, Karlerik. 2025. "Regression and Testing Cheat Sheet." RPubs. May 7. https://rpubs.com/knaslundjr/cheat_sheet_2.
 
 Norris, Pippa. 2004. Electoral Engineering: Voting Rules and Political Behavior. Cambridge: Cambridge University Press.
 
